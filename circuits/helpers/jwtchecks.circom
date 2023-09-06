@@ -247,6 +247,8 @@ template NonceChecker(nonceValueLength, nonceBitLen) {
 
 /**
 EmailVerifiedChecker: Checks if email_verified is true when the key claim is email.
+
+Accepts both boolean true and string "true" as valid values for email_verified.
 **/
 template EmailVerifiedChecker(maxKCNameLen, maxEVValueLen) {
     assert(maxKCNameLen >= 5);
@@ -255,7 +257,7 @@ template EmailVerifiedChecker(maxKCNameLen, maxEVValueLen) {
     signal input kc_name[maxKCNameLen];
     signal input kc_name_length;
 
-    signal input ev_name_with_quotes[16];
+    signal input ev_name_with_quotes[16]; // same as maxEVNameLenWithQuotes
 
     signal input ev_value[maxEVValueLen];
     signal input ev_value_length;
@@ -278,9 +280,20 @@ template EmailVerifiedChecker(maxKCNameLen, maxEVValueLen) {
         AssertEqualIfEnabled()(is_email, [ev_name_with_quotes[i], expected_ev_name[i]]);
     }
 
-    var expected_ev_value[4] = [116, 114, 117, 101]; // true
+    var X = IsEqual()([ev_value_length, 4]);
+    var Y = IsEqual()([ev_value_length, 6]);
+    var Z = OR()(X, Y);
+    AssertEqualIfEnabled()(is_email, [Z, 1]);
+
+    var expecting_boolean_email = is_email * X;
+    var expected_ev_value_boolean[4] = [116, 114, 117, 101]; // true
     for (var i = 0; i < 4; i++) {
-        AssertEqualIfEnabled()(is_email, [ev_value[i], expected_ev_value[i]]);
+        AssertEqualIfEnabled()(expecting_boolean_email, [ev_value[i], expected_ev_value_boolean[i]]);
     }
-    AssertEqualIfEnabled()(is_email, [ev_value_length, 4]);
+
+    var expecting_string_email = is_email * Y;
+    var expected_ev_value_string[6] = [34, 116, 114, 117, 101, 34]; // "true"
+    for (var i = 0; i < 6; i++) {
+        AssertEqualIfEnabled()(expecting_string_email, [ev_value[i], expected_ev_value_string[i]]);
+    }
 }
