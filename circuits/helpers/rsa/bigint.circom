@@ -6,6 +6,14 @@ include "../../../node_modules/circomlib/circuits/gates.circom";
 
 include "bigint_func.circom";
 
+/**
+BigLessThan(n, k) checks if a < b (out = 1) or a >= b (out = 0)
+
+The numbers a and b are represented as big integers in little-endian format.
+
+n is the number of bits in each limb
+k is the number of limbs
+**/
 template BigLessThan(n, k){
     signal input a[k];
     signal input b[k];
@@ -22,9 +30,9 @@ template BigLessThan(n, k){
         eq[i].in[1] <== b[i];
     }
 
-    // ors[i] holds (lt[k - 1] || (eq[k - 1] && lt[k - 2]) .. || (eq[k - 1] && .. && lt[i]))
-    // ands[i] holds (eq[k - 1] && .. && lt[i])
+    // ors[i] holds (lt[k - 1] || (eq[k - 1] && lt[k - 2]) .. || (eq[k - 1] && .. && eq[i + 1] && lt[i]))
     // eq_ands[i] holds (eq[k - 1] && .. && eq[i])
+    // ands[i] holds (eq[k - 1] && .. && eq[i + 1] && lt[i])
     component ors[k - 1];
     component ands[k - 1];
     component eq_ands[k - 1];
@@ -52,9 +60,23 @@ template BigLessThan(n, k){
      out <== ors[0].out;
 }
 
-// in[i] contains values in the range -2^(m-1) to 2^(m-1)
-// constrain that in[] as a big integer is zero
-// each limbs is n bits
+/**
+CheckCarryToZero
+
+Construction params:
+    n: original number of bits in each limb
+    m: actual number of bits in each limb (in[i] is in the range -2^(m-1) to 2^(m-1))
+    k: number of limbs
+
+Inputs:
+    in: the limbs of the big integer
+
+Implements the equality assertion described in Sec IV-B-4 of (https://ieeexplore.ieee.org/abstract/document/8418647).
+In effect, this checks that the big integer is zero. In more detail, it checks that:
+- in[0] % 2^n = 0, carry[0] = in[0] / 2^n
+- (in[1] + carry[0]) % 2^n = 0, carry[1] = (in[1] + carry[0]) / 2^n
+- ...
+**/
 template CheckCarryToZero(n, m, k) {
     assert(k >= 2);
     
@@ -66,18 +88,18 @@ template CheckCarryToZero(n, m, k) {
     
     signal carry[k];
     component carryRangeChecks[k];
-    for (var i = 0; i < k-1; i++){
+    for (var i = 0; i < k-1; i++) {
         carryRangeChecks[i] = Num2Bits(m + EPSILON - n); 
-        if( i == 0 ){
+        if (i == 0) {
             carry[i] <-- in[i] / (1<<n);
             in[i] === carry[i] * (1<<n);
         }
-        else{
-            carry[i] <-- (in[i]+carry[i-1]) / (1<<n);
+        else {
+            carry[i] <-- (in[i] + carry[i-1]) / (1<<n);
             in[i] + carry[i-1] === carry[i] * (1<<n);
         }
-        // checking carry is in the range of - 2^(m-n-1+eps), 2^(m+-n-1+eps)
-        carryRangeChecks[i].in <== carry[i] + ( 1<< (m + EPSILON - n - 1));
+        // checking carry is in the range of - 2^(m-n-1+eps), 2^(m-n-1+eps)
+        carryRangeChecks[i].in <== carry[i] + (1 << (m + EPSILON - n - 1));
     }
-    in[k-1] + carry[k-2] === 0;   
+    in[k-1] + carry[k-2] === 0;
 }

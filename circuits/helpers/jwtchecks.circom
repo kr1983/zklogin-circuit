@@ -79,8 +79,8 @@ Construction Params:
 
 Range checks:
     - 0 < ext_claim_length (LTBitVector) and ext_claim_length <= maxExtendedClaimLen (this)
-    - 0 < name_length <= maxClaimNameLen (Slice)
-    - 0 < value_length <= maxClaimValueLen (Slice)
+    - 0 < name_length <= maxClaimNameLen (SliceFromStart)
+    - 0 < value_length <= maxClaimValueLen (SliceEfficient)
     - 0 < colon_index < maxExtendedClaimLen
     - 0 < value_index, value_index + value_length <= maxExtendedClaimLen
     - name_length <= colon_index < value_index

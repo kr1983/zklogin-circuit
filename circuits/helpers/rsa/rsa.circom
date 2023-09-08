@@ -53,6 +53,7 @@ Assumes:
     - public exponent is 65537 
     - hashing algorithm is SHA-2.
     - the modulus and base_message are well-formed and range-checked (or otherwise trustworthy).
+    - all inputs are in little-endian order.
 
 Note: It is not necessary to check that the modulus is well-formed 
 in the circuit because this happens at another place: 

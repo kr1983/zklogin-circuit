@@ -122,7 +122,7 @@ template HashToField(inWidth, inLen) {
 
 // Note: The result of this function is the same as 
 // directly calling HashToField(8, inLen)(in).
-// This is a more efficient implementation as it avoid the Num2Bits.
+// This is a more efficient implementation as it avoids the Num2Bits.
 template HashBytesToField(inLen) {
     signal input in[inLen];
     var inWidth = 8;
