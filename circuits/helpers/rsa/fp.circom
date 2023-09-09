@@ -5,26 +5,29 @@ include "../../../node_modules/circomlib/circuits/bitify.circom";
 include "./bigint.circom";
 include "./bigint_func.circom";
 
-// These functions operate over values in Z/Zp for some integer p (typically,
-// but not necessarily prime). Values are stored as standard bignums with k
-// chunks of n bits, but intermediate values often have "overflow" bits inside
-// various chunks.
-//
-// These Fp functions will always correctly generate witnesses mod p, but they
-// do not *check* that values are normalized to < p; they only check that
-// values are correct mod p. This is to save the comparison circuit.
-// They *will* always check for intended results mod p (soundness), but it may
-// not have a unique intermediate signal.
-//
-// Conversely, some templates may not be satisfiable if the input witnesses are
-// not < p. This does not break completeness, as honest provers will always
-// generate witnesses which are canonical (between 0 and p).
+/**
+FpMul: Multiplication in Fp.
 
-// The techniques are originally from xJsnark (https://ieeexplore.ieee.org/abstract/document/8418647)
-//  See Section IV-B-1 and IV-B-4.
+Construction Params:
+    n: bit width of each chunk
+    k: number of chunk
 
-// a * b = r mod p
-// a * b - p * q - r for some q
+Inputs: a, b (in chunked form). 
+Note that a big integer is being stored as k chunks of n bits each.
+
+Outputs: r (in chunked form) s.t. r mod p = (a * b) mod p where r < 2^(k * n)
+
+Assumptions and limitations: 
+1. The inputs must be less than p, i.e., a < p, b < p
+2. The output r could be (a * b) mod p + xp for some x (provided r < 2^(k * n)).
+   That is, we do not check if r < p to save on the comparison circuit.
+
+Also note that many intermediate values "overflow" or "underflow"
+    , i.e., contain chunks with > n bits.
+
+The techniques are originally from xJsnark (https://ieeexplore.ieee.org/abstract/document/8418647)
+ See Section IV-B-1 and IV-B-4.
+**/
 template FpMul(n, k) {
     assert(n + n + log_ceil(k) + 2 <= 252);
     signal input a[k];
@@ -48,8 +51,8 @@ template FpMul(n, k) {
 
     var long_div_out[2][100] = long_div(n, k, k, ab_proper, p);
 
-    // Since we're only computing a*b, we know that q < p will suffice, so we
-    // know it fits into k chunks and can do size n range checks.
+    // Since a < p and b < p, it must be that the quotient of the division (a * b) / p
+    // is also less than p. So it should fit into k chunks.
     signal q[k];
     component q_range_check[k];
     signal r[k];
